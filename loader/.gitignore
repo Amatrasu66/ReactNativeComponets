@@ -1,0 +1,26 @@
+# Expo
+.expo/
+web-build/
+expo-env.d.ts
+
+# Native generated folders (Continuous Native Generation - do not edit by hand)
+/android
+/ios
+
+# Native build artifacts
+.kotlin/
+
+# Metro
+.metro-health-check*
+
+# Native signing files (do not commit)
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Local env files
+.env*.local
