@@ -9,13 +9,11 @@ import {
 
 import Slider from '@react-native-community/slider';
 
-import { GlowingLoader } from '../../loaders/v1/GlowingLoader';
+import { LoaderV2 } from '../../loaders/v2';
 
-export default function Index() {
-  const [duration, setDuration] = useState(5000);
-  const [speed, setSpeed] = useState(0.6);
-  const [range, setRange] = useState(2.5);
-  const [phase, setPhase] = useState(1.6);
+export default function IndexV2() {
+  const [size, setSize] = useState(180);
+  const [speed, setSpeed] = useState(1);
 
   return (
     <View style={styles.container}>
@@ -25,67 +23,61 @@ export default function Index() {
       >
         {/* Loader Preview */}
         <View style={styles.loaderContainer}>
-          <GlowingLoader
-            size={290}
-            duration={duration}
-            speed={speed}
-            range={range}
-            phaseOffset={phase}
-          />
+          <LoaderV2 size={size} speed={speed} />
         </View>
 
         {/* Controls */}
         <View style={styles.controls}>
           <View style={styles.headerRow}>
             <Text style={styles.headerText}>
-              Loader Animation Controls
+              Thinking Orbs Controls
             </Text>
 
             <Text style={styles.modeText}>
-              Single Loop Mode
+              Vortex — 3s loop
             </Text>
           </View>
 
-          {/* Duration */}
+          {/* Size */}
           <View style={styles.control}>
             <View style={styles.labelRow}>
               <Text style={styles.label}>
-                Rotation Speed (Duration)
+                Orb Size (Diameter)
               </Text>
 
               <Text style={styles.value}>
-                {(duration / 1000).toFixed(1)}s
+                {Math.round(size)}px
               </Text>
             </View>
 
             <Slider
               style={styles.slider}
-              minimumValue={1000}
-              maximumValue={8000}
-              step={250}
-              value={duration}
+              minimumValue={80}
+              maximumValue={280}
+              step={4}
+              value={size}
               minimumTrackTintColor="#FFFFFF"
               maximumTrackTintColor="#27272A"
               thumbTintColor="#FFFFFF"
-              onValueChange={setDuration}
+              onValueChange={setSize}
             />
           </View>
 
-          {/* Wave Frequency */}
+          {/* Speed */}
           <View style={styles.control}>
             <View style={styles.labelRow}>
               <Text style={styles.label}>
-                Wave Ripple Frequency
+                Spin Speed
               </Text>
 
               <Text style={styles.value}>
-                {speed.toFixed(2)}x
+                {speed.toFixed(2)}x ({(3 / speed).toFixed(1)}s/loop)
               </Text>
             </View>
 
             <Slider
               style={styles.slider}
-              minimumValue={0.2}
+              minimumValue={0.25}
               maximumValue={2.5}
               step={0.05}
               value={speed}
@@ -93,56 +85,6 @@ export default function Index() {
               maximumTrackTintColor="#27272A"
               thumbTintColor="#FFFFFF"
               onValueChange={setSpeed}
-            />
-          </View>
-
-          {/* Flowiness */}
-          <View style={styles.control}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>
-                Flowiness Spread (Arc Length)
-              </Text>
-
-              <Text style={styles.value}>
-                {range.toFixed(2)}
-              </Text>
-            </View>
-
-            <Slider
-              style={styles.slider}
-              minimumValue={0.1}
-              maximumValue={2.5}
-              step={0.05}
-              value={range}
-              minimumTrackTintColor="#FFFFFF"
-              maximumTrackTintColor="#27272A"
-              thumbTintColor="#FFFFFF"
-              onValueChange={setRange}
-            />
-          </View>
-
-          {/* Phase */}
-          <View style={styles.control}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>
-                Wave Offset Phase
-              </Text>
-
-              <Text style={styles.value}>
-                {phase.toFixed(2)} rad
-              </Text>
-            </View>
-
-            <Slider
-              style={styles.slider}
-              minimumValue={0}
-              maximumValue={Math.PI}
-              step={0.05}
-              value={phase}
-              minimumTrackTintColor="#FFFFFF"
-              maximumTrackTintColor="#27272A"
-              thumbTintColor="#FFFFFF"
-              onValueChange={setPhase}
             />
           </View>
         </View>
@@ -154,7 +96,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#050505',
   },
 
   content: {
