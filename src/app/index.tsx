@@ -9,7 +9,7 @@ import {
 
 import Slider from '@react-native-community/slider';
 
-import { GlowingLoader } from '../../v1/GlowingLoader';
+import { GlowingLoader } from '../../loaders/v1/GlowingLoader';
 
 export default function Index() {
   const [duration, setDuration] = useState(5000);

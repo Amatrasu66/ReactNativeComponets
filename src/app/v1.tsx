@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { GlowingLoader } from '../../v1';
+import { GlowingLoader } from '../../loaders/v1';
 
 export default function V1Screen() {
   return (
