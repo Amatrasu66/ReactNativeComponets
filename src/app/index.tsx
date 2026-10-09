@@ -9,6 +9,7 @@ import {
 
 import Slider from '@react-native-community/slider';
 
+
 import { GlowingLoader } from '../../loaders/v1/GlowingLoader';
 
 export default function Index() {
