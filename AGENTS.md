@@ -32,39 +32,50 @@ ReactNativeComponents/
 ├── src/
 │   └── app/
 │       ├── _layout.tsx      # root Stack layout
-│       ├── index.tsx        # component gallery (/)
-│       └── v1.tsx           # V1 demo screen (/v1)
+│       ├── index.tsx        # V1 showcase (/)
+│       ├── index-v2.tsx     # V2 showcase (/index-v2)
+│       ├── v1.tsx           # V1 demo screen (/v1)
+│       └── v2.tsx           # V2 demo screen (/v2)
 ├── loaders/
-│   └── v1/                  # V1 component (plain folder, NOT Expo)
-│       ├── GlowingLoader.tsx
+│   ├── v1/                  # V1 component (frozen, plain folder, NOT Expo)
+│   │   ├── GlowingLoader.tsx
+│   │   └── index.ts
+│   └── v2/                  # V2 component (plain folder, NOT Expo)
+│       ├── ThinkingOrbsLoader.tsx
 │       └── index.ts
 ├── README.md / LICENSE / AGENTS.md
-└── ...                      # future: loaders/v2, progress-bars/, buttons/
+└── ...                      # future: loaders/v3, progress-bars/, buttons/
 ```
 
-- `loaders/v1` is NOT an Expo project (no `package.json`, no `app.json`).
-- Future `loaders/v2`, `loaders/v3` are also plain folders, NOT Expo projects.
-  Do NOT create them until requested.
-- Future component families (`progress-bars/`, `buttons/`, `inputs/`) are plain
+- `loaders/v1` and `loaders/v2` are NOT Expo projects (no `package.json`, no `app.json`).
+- Future versions (`loaders/v3`) and component families (`progress-bars/`, `buttons/`, `inputs/`) are plain
   folders sharing the SAME root Expo installation, `package.json`,
   `node_modules`, and assets where appropriate. Do NOT create them until
   requested.
-- There is NO `loader/` directory. Do NOT recreate it.
+- Every new version gets a separate folder and showcase, without overwriting older versions.
+- Never create nested Expo projects, package manifests, lockfiles, node_modules, or Git repositories.
+- Separate component implementations (e.g. `loaders/`) from route/showcase screens (in `src/app/`).
 
 ## Expo Router
 
 - Routes live in `src/app/`. Every file there is a screen.
-- Required routes: `src/app/_layout.tsx`, `src/app/index.tsx` (`/` gallery),
-  `src/app/v1.tsx` (`/v1` demo).
+- Declared routes in `_layout.tsx`:
+  - `src/app/index.tsx` (`/` V1 showcase)
+  - `src/app/index-v2.tsx` (`/index-v2` V2 showcase)
+  - `src/app/v1.tsx` (`/v1` V1 isolated demo)
+  - `src/app/v2.tsx` (`/v2` V2 isolated demo)
 - There is NO `/explore` route. Do NOT create `src/app/explore.tsx`.
-- Keep non-route code outside `src/app/` (for example `loaders/v1/`).
+- Keep non-route code outside `src/app/` (for example `loaders/v1/`, `loaders/v2/`).
 - Keep demo UI minimal.
 
-## V1 component
+## Component isolation and V1 status
 
-- `loaders/v1/GlowingLoader.tsx` is the working V1 implementation. Preserve it
+- `loaders/v1/GlowingLoader.tsx` is the working V1 implementation. It is frozen. Preserve it
   exactly; do not refactor, redesign, or change its behavior.
 - `loaders/v1/index.ts` must contain `export * from './GlowingLoader';`.
+- `loaders/v2/` is the separate V2 implementation (`ThinkingOrbsLoader.tsx`).
+- V1 demo (`src/app/v1.tsx`) must only render the V1 loader.
+- V2 demo (`src/app/v2.tsx`) must only render the V2 loader.
 - Do NOT invent old SVG paths. Do NOT use Skia. No `skia` dependency.
 - Only update imports if a move requires path changes.
 
@@ -147,4 +158,5 @@ npx expo export --platform web
 
 Expected: no `loader/` directory, no nested `.git`, exactly one root
 `package.json`, one root `node_modules/`, no Skia dependency, `/` exists,
-`/v1` exists, no `/explore` route, `loaders/v1/GlowingLoader.tsx` exists.
+`/index-v2` exists, `/v1` exists, `/v2` exists, no `/explore` route,
+`loaders/v1/GlowingLoader.tsx` exists, `loaders/v2/ThinkingOrbsLoader.tsx` exists.

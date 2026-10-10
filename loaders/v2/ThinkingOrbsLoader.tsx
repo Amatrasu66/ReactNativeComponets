@@ -30,78 +30,65 @@ const TWO_PI = Math.PI * 2;
 /** One full revolution of the reference effect. */
 const LOOP_MS = 3000;
 /** Number of dots on the sphere. */
-const PARTICLE_COUNT = 160;
-/** Camera distance in sphere radii (smaller = stronger perspective). */
-const PERSPECTIVE = 3.2;
-/** Static tilt of the spin axis (radians). */
-const TILT_X = 0.42;
-const TILT_Z = -0.2;
-/** Amplitude of the loop-periodic "vortex" shear (radians). */
-const SWIRL = 0.9;
+const PARTICLE_COUNT = 90;
+/** Camera distance in sphere radii. */
+const PERSPECTIVE = 3.6;
+/** Static tilt of the spin axis (radians) - gentle tilt like a rotating globe. */
+const TILT_X = 0.28;
+const TILT_Z = -0.15;
+/** Subtle vortex / swirl amplitude. */
+const SWIRL = 0.25;
 
 export interface LoaderV2Props {
   /** Outer diameter of the spinner in px. Default 120. */
   size?: number;
-  /** Speed multiplier. 1 matches the reference (3s per loop). Default 1. */
+  /** Speed multiplier. 1 matches reference (3s per loop). Default 1. */
   speed?: number;
+  /** Reverse spin rotation direction. Default false (clockwise). */
+  reverse?: boolean;
+  /** Dot size multiplier / scale. Default 1 (base 3.2px scaled). */
+  dotScale?: number;
+  /** Total number of particles on the sphere. Default 90. */
+  particleCount?: number;
+  /** Tilt angle of the spin axis (radians). Default 0.28. */
+  tilt?: number;
+  /** Max opacity multiplier for the dots (0.2 to 1). Default 1. */
+  opacity?: number;
+  /** Amplitude of the vortex swirl (radians). Default 0.25. */
+  swirl?: number;
   style?: ViewStyle;
 }
 
 /* ---------------------------------- utils --------------------------------- */
-
-/** Tiny deterministic PRNG so the particle layout never reshuffles on re-render. */
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 interface Particle {
   sinLat: number;
   cosLat: number;
   lon0: number;
   radius: number;
-  bobAmp: number;
-  bobPhase: number;
   core: number;
   halo: number;
 }
 
-/** Fibonacci-sphere distribution + jitter -> even but organic coverage. */
-function buildParticles(count: number, scale: number): Particle[] {
-  const rand = mulberry32(0x0ea5c0de);
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+/** Pure Fibonacci-sphere distribution -> perfectly uniform lattice coverage. */
+function buildParticles(count: number, scale: number, dotScale: number): Particle[] {
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~2.39996 rad
   const particles: Particle[] = [];
+  const baseDotSize = 3.2 * scale * dotScale;
+
   for (let i = 0; i < count; i++) {
-    // 1) point on the unit sphere
-    let y = 1 - (2 * (i + 0.5)) / count;
+    // Exact Fibonacci sphere formula for uniform distribution without random clustering
+    const y = 1 - (2 * (i + 0.5)) / count;
     const r = Math.sqrt(Math.max(0, 1 - y * y));
-    let x = r * Math.cos(i * goldenAngle);
-    let z = r * Math.sin(i * goldenAngle);
-    // 2) organic jitter, renormalised back onto the sphere
-    x += (rand() - 0.5) * 0.16;
-    y += (rand() - 0.5) * 0.16;
-    z += (rand() - 0.5) * 0.16;
-    const len = Math.hypot(x, y, z) || 1;
-    x /= len;
-    y /= len;
-    z /= len;
-    // 3) per-particle look
-    const bright = rand() < 0.08; // a few larger "hero" orbs
-    const core = (bright ? 3.2 + rand() * 1.8 : 1.6 + rand() * 1.6) * scale;
+    const lon = i * goldenAngle;
+
     particles.push({
       sinLat: y,
-      cosLat: Math.sqrt(Math.max(0, 1 - y * y)),
-      lon0: Math.atan2(x, z),
-      radius: 0.92 + rand() * 0.08, // slight radial variation
-      bobAmp: 0.02 + rand() * 0.05,
-      bobPhase: rand() * TWO_PI,
-      core,
-      halo: core * 3,
+      cosLat: r,
+      lon0: lon,
+      radius: 1.0,
+      core: baseDotSize,
+      halo: baseDotSize * 2.2,
     });
   }
   return particles;
@@ -113,6 +100,10 @@ interface OrbProps {
   particle: Particle;
   progress: SharedValue<number>;
   sphereRadius: number;
+  reverse: boolean;
+  tilt: number;
+  swirl: number;
+  maxOpacity: number;
 }
 
 /**
@@ -120,74 +111,66 @@ interface OrbProps {
  * spin -> vortex shear -> tilt -> perspective -> depth shading. Because every
  * term is periodic in the loop, the wrap from progress 1 -> 0 is seamless.
  */
-const Orb = memo(function Orb({ particle, progress, sphereRadius }: OrbProps) {
+const Orb = memo(function Orb({
+  particle,
+  progress,
+  sphereRadius,
+  reverse,
+  tilt,
+  swirl,
+  maxOpacity,
+}: OrbProps) {
   const animated = useAnimatedStyle(
     () => {
-      const w = TWO_PI * progress.value;
+      const dir = reverse ? -1 : 1;
+      const w = TWO_PI * progress.value * dir;
 
       // Spin around the Y axis + vortex shear (differential twist by latitude,
       // shear is zero at t=0 and t=1, so the loop never pops).
-      const lon = particle.lon0 + w + SWIRL * Math.sin(w) * particle.sinLat;
+      const lon = particle.lon0 + w + swirl * Math.sin(w) * particle.sinLat;
       const cl = particle.cosLat;
-      let x = cl * Math.sin(lon);
-      let y = particle.sinLat;
-      let z = cl * Math.cos(lon);
-
-      // Small loop-periodic vertical drift for organic motion.
-      y += particle.bobAmp * Math.sin(w + particle.bobPhase);
-
-      x *= particle.radius;
-      y *= particle.radius;
-      z *= particle.radius;
+      const x = cl * Math.sin(lon);
+      const y = particle.sinLat;
+      const z = cl * Math.cos(lon);
 
       // Tilt the spin axis: roll around Z, then pitch around X.
       const cz = Math.cos(TILT_Z);
       const sz = Math.sin(TILT_Z);
       const x2 = x * cz - y * sz;
       const y2 = x * sz + y * cz;
-      const cx = Math.cos(TILT_X);
-      const sx = Math.sin(TILT_X);
+      const cx = Math.cos(tilt);
+      const sx = Math.sin(tilt);
       const y3 = y2 * cx - z * sx;
       const z3 = y2 * sx + z * cx;
 
       // Perspective projection (+z towards the camera) and depth shading.
       const persp = PERSPECTIVE / (PERSPECTIVE - z3);
-      const depth = (z3 + 1) / 2; // 0 = far side, 1 = near side
-      const shade = depth * depth * (3 - 2 * depth); // smoothstep
+      // Normalized depth in [0, 1] (0 at back, 1 at front)
+      const depth = (z3 + 1) / 2;
+      // Linear or subtle smoothstep depth shading
+      const shade = depth * 0.75 + 0.25;
 
       return {
         transform: [
           { translateX: x2 * sphereRadius * persp },
           { translateY: -y3 * sphereRadius * persp },
-          { scale: persp * (0.8 + 0.4 * depth) },
+          { scale: persp * (0.65 + 0.45 * depth) },
         ],
-        opacity: 0.14 + 0.86 * shade,
+        opacity: Math.max(0.18 * maxOpacity, Math.min(1.0, shade) * maxOpacity),
+        zIndex: Math.round(depth * 100),
       };
     },
-    [particle, sphereRadius],
+    [particle, sphereRadius, reverse, tilt, swirl, maxOpacity],
   );
 
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.dot,
-        {
-          width: particle.halo,
-          height: particle.halo,
-          borderRadius: particle.halo / 2,
-          marginLeft: -particle.halo / 2,
-          marginTop: -particle.halo / 2,
-        },
-        animated,
-      ]}
-    >
+    <Animated.View style={[styles.dot, animated]}>
       <View
         style={{
           width: particle.core,
           height: particle.core,
           borderRadius: particle.core / 2,
-          backgroundColor: 'rgba(255,255,255,0.92)',
+          backgroundColor: '#FFFFFF',
         }}
       />
     </Animated.View>
@@ -196,15 +179,27 @@ const Orb = memo(function Orb({ particle, progress, sphereRadius }: OrbProps) {
 
 /* ------------------------------- the loader -------------------------------- */
 
-function ThinkingOrbsLoaderBase({ size = 120, speed = 1, style }: LoaderV2Props) {
+function ThinkingOrbsLoaderBase({
+  size = 120,
+  speed = 1,
+  reverse = false,
+  dotScale = 1,
+  particleCount = PARTICLE_COUNT,
+  tilt = TILT_X,
+  opacity = 1,
+  swirl = SWIRL,
+  style,
+}: LoaderV2Props) {
   const safeSpeed = speed > 0 ? speed : 1;
+  const safeCount = Math.max(12, Math.min(240, Math.round(particleCount)));
   const particles = useMemo(
-    () => buildParticles(PARTICLE_COUNT, size / 120),
-    [size],
+    () => buildParticles(safeCount, size / 120, dotScale),
+    [safeCount, size, dotScale],
   );
   const progress = useSharedValue(0);
 
   useEffect(() => {
+    progress.value = 0;
     progress.value = withRepeat(
       withTiming(1, { duration: LOOP_MS / safeSpeed, easing: Easing.linear }),
       -1,
@@ -218,7 +213,16 @@ function ThinkingOrbsLoaderBase({ size = 120, speed = 1, style }: LoaderV2Props)
   return (
     <View style={[styles.container, { width: size, height: size }, style]}>
       {particles.map((p, i) => (
-        <Orb key={i} particle={p} progress={progress} sphereRadius={sphereRadius} />
+        <Orb
+          key={`${i}-${safeCount}`}
+          particle={p}
+          progress={progress}
+          sphereRadius={sphereRadius}
+          reverse={reverse}
+          tilt={tilt}
+          swirl={swirl}
+          maxOpacity={opacity}
+        />
       ))}
     </View>
   );
@@ -235,9 +239,10 @@ const styles = StyleSheet.create({
     top: '50%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)', // soft halo = fake bloom
+    backgroundColor: 'rgba(255,255,255,0.12)', // subtle ambient glow halo
   },
 });
 
+export const ThinkingOrbsLoader = ThinkingOrbsLoaderBase;
 export const LoaderV2 = ThinkingOrbsLoaderBase;
 export default ThinkingOrbsLoaderBase;

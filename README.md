@@ -24,26 +24,31 @@ ReactNativeComponents/
 │
 ├── src/
 │   └── app/
-│       ├── _layout.tsx   # root Stack layout
-│       ├── index.tsx     # component gallery (/)
-│       └── v1.tsx        # V1 demo screen (/v1)
+│       ├── _layout.tsx   # root Stack layout (index, index-v2, v1, v2)
+│       ├── index.tsx     # V1 showcase (/)
+│       ├── index-v2.tsx  # V2 showcase (/index-v2)
+│       ├── v1.tsx        # V1 demo screen (/v1)
+│       └── v2.tsx        # V2 demo screen (/v2)
 │
 └── loaders/            # loader component family (plain folder, NOT Expo)
-    └── v1/             # V1 component (plain folder, NOT an Expo project)
-        ├── GlowingLoader.tsx
+    ├── v1/             # V1 component (frozen, plain folder, NOT Expo)
+    │   ├── GlowingLoader.tsx
+    │   └── index.ts
+    └── v2/             # V2 component (plain folder, NOT Expo)
+        ├── ThinkingOrbsLoader.tsx
         └── index.ts
 ```
 
-Future categories follow the same pattern and share the same installation:
+Future categories and versions follow the same pattern and share the same installation:
 
 ```text
-loaders/v2, loaders/v3, ...
+loaders/v3, ...
 progress-bars/v1, ...
 buttons/v1, ...
 inputs/...
 ```
 
-Do NOT create them until requested.
+Do NOT create them until requested. Every new version gets a separate folder and showcase without overwriting older versions.
 
 ## Rules
 
@@ -52,15 +57,18 @@ Do NOT create them until requested.
 - The repository root IS the ONE Expo application (promoted from `loader/`).
   It was created manually and must NOT be recreated, reinitialized, or
   replaced. Never run `create-expo-app` in this repo.
-- There is NO `loader/` directory. Do NOT recreate it.
-- `loaders/v1` is NOT an Expo project. Future `v2`/`v3` variations and future
+- Never create nested Expo projects, package manifests, lockfiles, node_modules,
+  or Git repositories.
+- `loaders/v1` and `loaders/v2` are NOT Expo projects. Future variations and future
   families (`progress-bars`, `buttons`, `inputs`) are also NOT separate Expo
   projects — they are plain folders sharing the root installation.
 - One `package.json`. One `package-lock.json`. One `node_modules/`. No
   workspaces or monorepo tooling.
+- Separate component implementations (in `loaders/`, etc.) from route/showcase screens (in `src/app/`).
 - No Skia dependency.
-- Expo Router routes live in `src/app/`. Routes: `/` (gallery),
-  `/v1` (V1 demo). There is no `/explore` route.
+- Expo Router routes live in `src/app/`. Routes: `/` (V1 showcase),
+  `/index-v2` (V2 showcase), `/v1` (V1 isolated demo), `/v2` (V2 isolated demo).
+  There is no `/explore` route.
 
 ## Development
 
@@ -75,8 +83,11 @@ npx expo export --platform web
 npx expo start
 ```
 
-## V1 status
+## Versioning and V1 status
+ 
+- `loaders/v1/GlowingLoader.tsx` is the frozen V1 implementation. Preserve it
+  exactly — do not refactor, redesign, or change its behavior. Do not invent old
+  SVG paths. Do not use Skia.
+- Every new version gets a separate folder (`loaders/v2/`, etc.) and a separate
+  showcase (`src/app/index-v2.tsx`), without overwriting older versions.
 
-`loaders/v1/GlowingLoader.tsx` is the working V1 implementation. Preserve it
-exactly — do not refactor, redesign, or change its behavior. Do not invent old
-SVG paths. Do not use Skia.

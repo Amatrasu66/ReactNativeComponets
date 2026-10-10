@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 
 import Slider from '@react-native-community/slider';
-
+import { Link } from 'expo-router';
 
 import { GlowingLoader } from '../../loaders/v1/GlowingLoader';
 
@@ -24,6 +24,19 @@ export default function Index() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* Navigation Switcher */}
+        <View style={styles.navRow}>
+          <View style={[styles.navTab, styles.navTabActive]}>
+            <Text style={styles.navTextActive}>V1 Showcase</Text>
+          </View>
+          <Link href="/index-v2" style={styles.navTab}>
+            <Text style={styles.navTextInactive}>Switch to V2 →</Text>
+          </Link>
+          <Link href="/v1" style={styles.navTab}>
+            <Text style={styles.navTextInactive}>Isolated Screen ↗</Text>
+          </Link>
+        </View>
+
         {/* Loader Preview */}
         <View style={styles.loaderContainer}>
           <GlowingLoader
@@ -163,6 +176,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 32,
     paddingBottom: 40,
+  },
+
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: '#18181B',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    gap: 6,
+  },
+
+  navTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+
+  navTabActive: {
+    backgroundColor: '#18181B',
+  },
+
+  navTextActive: {
+    color: '#FAFAFA',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  navTextInactive: {
+    color: '#A1A1AA',
+    fontSize: 12,
+    fontWeight: '500',
   },
 
   loaderContainer: {

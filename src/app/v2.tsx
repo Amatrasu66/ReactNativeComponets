@@ -4,7 +4,7 @@ import { LoaderV2 } from '../../loaders/v2';
 export default function V2PreviewScreen() {
   return (
     <View style={styles.screen}>
-      <LoaderV2 />
+      <LoaderV2 size={180} />
     </View>
   );
 }
