@@ -67,7 +67,6 @@ interface Particle {
   lon0: number;
   radius: number;
   core: number;
-  halo: number;
 }
 
 /** Pure Fibonacci-sphere distribution -> perfectly uniform lattice coverage. */
@@ -88,7 +87,6 @@ function buildParticles(count: number, scale: number, dotScale: number): Particl
       lon0: lon,
       radius: 1.0,
       core: baseDotSize,
-      halo: baseDotSize * 2.2,
     });
   }
   return particles;
@@ -98,7 +96,7 @@ function buildParticles(count: number, scale: number, dotScale: number): Particl
 
 interface OrbProps {
   particle: Particle;
-  progress: SharedValue<number>;
+  angle: SharedValue<number>;
   sphereRadius: number;
   reverse: boolean;
   tilt: number;
@@ -108,12 +106,12 @@ interface OrbProps {
 
 /**
  * One dot. The animated style performs the full 3D -> 2D pipeline per frame:
- * spin -> vortex shear -> tilt -> perspective -> depth shading. Because every
- * term is periodic in the loop, the wrap from progress 1 -> 0 is seamless.
+ * spin -> vortex shear -> tilt -> perspective -> depth shading.
+ * Angle runs continuously without modular wrapping pops or timer stutters.
  */
 const Orb = memo(function Orb({
   particle,
-  progress,
+  angle,
   sphereRadius,
   reverse,
   tilt,
@@ -122,11 +120,11 @@ const Orb = memo(function Orb({
 }: OrbProps) {
   const animated = useAnimatedStyle(
     () => {
+      const a = angle.value;
       const dir = reverse ? -1 : 1;
-      const w = TWO_PI * progress.value * dir;
+      const w = a * dir;
 
-      // Spin around the Y axis + vortex shear (differential twist by latitude,
-      // shear is zero at t=0 and t=1, so the loop never pops).
+      // Vortex shear twist: smoothly modulated by latitude
       const lon = particle.lon0 + w + swirl * Math.sin(w) * particle.sinLat;
       const cl = particle.cosLat;
       const x = cl * Math.sin(lon);
@@ -147,7 +145,7 @@ const Orb = memo(function Orb({
       const persp = PERSPECTIVE / (PERSPECTIVE - z3);
       // Normalized depth in [0, 1] (0 at back, 1 at front)
       const depth = (z3 + 1) / 2;
-      // Linear or subtle smoothstep depth shading
+      // Smooth subtle depth shading
       const shade = depth * 0.75 + 0.25;
 
       return {
@@ -164,16 +162,20 @@ const Orb = memo(function Orb({
   );
 
   return (
-    <Animated.View style={[styles.dot, animated]}>
-      <View
-        style={{
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.dot,
+        {
           width: particle.core,
           height: particle.core,
           borderRadius: particle.core / 2,
-          backgroundColor: '#FFFFFF',
-        }}
-      />
-    </Animated.View>
+          marginLeft: -particle.core / 2,
+          marginTop: -particle.core / 2,
+        },
+        animated,
+      ]}
+    />
   );
 });
 
@@ -196,17 +198,24 @@ function ThinkingOrbsLoaderBase({
     () => buildParticles(safeCount, size / 120, dotScale),
     [safeCount, size, dotScale],
   );
-  const progress = useSharedValue(0);
+
+  // angle accumulates continuously in radians: seamless, no wrap jumps
+  const angle = useSharedValue(0);
 
   useEffect(() => {
-    progress.value = 0;
-    progress.value = withRepeat(
-      withTiming(1, { duration: LOOP_MS / safeSpeed, easing: Easing.linear }),
-      -1,
-      false,
-    );
-    return () => cancelAnimation(progress);
-  }, [safeSpeed, progress]);
+    // Current angular velocity in radians per millisecond: TWO_PI / (LOOP_MS / safeSpeed)
+    const angularSpeed = (TWO_PI * safeSpeed) / LOOP_MS;
+    // Animate continuously forward for a large, smooth duration preserving current angle
+    const targetDelta = angularSpeed * 1000000;
+    const duration = 1000000;
+
+    angle.value = withTiming(angle.value + targetDelta, {
+      duration,
+      easing: Easing.linear,
+    });
+
+    return () => cancelAnimation(angle);
+  }, [safeSpeed, angle]);
 
   const sphereRadius = size * 0.41;
 
@@ -216,7 +225,7 @@ function ThinkingOrbsLoaderBase({
         <Orb
           key={`${i}-${safeCount}`}
           particle={p}
-          progress={progress}
+          angle={angle}
           sphereRadius={sphereRadius}
           reverse={reverse}
           tilt={tilt}
@@ -237,9 +246,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     top: '50%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)', // subtle ambient glow halo
+    backgroundColor: '#FFFFFF',
   },
 });
 
