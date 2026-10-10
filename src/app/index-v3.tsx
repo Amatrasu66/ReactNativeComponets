@@ -1,157 +1,409 @@
 /**
  * Loader V3 showcase screen.
  *
- * Recreates the look of the reference video: a dark rounded "pill"
- * containing the particle-wave loader on the left and the "Listening…"
- * label on the right. Adds Size and Speed sliders so the user can probe
- * the loader's behaviour without leaving the screen.
+ * Displays just the particle-wave loader animation (no header, no pill).
+ * Full control panel with all sliders and toggles.
  *
  * This screen does NOT import V1 or V2 — V3 is fully isolated.
  */
 
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Slider from '@react-native-community/slider';
+import { Link } from 'expo-router';
 import { LoaderV3 } from '../../loaders/v3';
 
 export default function IndexV3Screen() {
-  const [size, setSize] = useState(120);
+  const [size, setSize] = useState(180);
   const [speed, setSpeed] = useState(1);
+  const [reverse, setReverse] = useState(false);
+  const [dotRadius, setDotRadius] = useState(2.4);
+  const [outerRingDots, setOuterRingDots] = useState(22);
+  const [rings, setRings] = useState(3);
+  const [opacity, setOpacity] = useState(1);
+  const [falloff, setFalloff] = useState(2);
+  const [baseOpacity, setBaseOpacity] = useState(0.08);
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Loader V3</Text>
-        <Text style={styles.subtitle}>Particle Wave Loader</Text>
-      </View>
-
-      <View style={styles.stage}>
-        <View style={styles.pill}>
-          <LoaderV3 size={size} speed={speed} />
-          <Text style={styles.listeningText}>Listening…</Text>
-        </View>
-      </View>
-
-      <View style={styles.controls}>
-        <View style={styles.control}>
-          <View style={styles.controlHeader}>
-            <Text style={styles.controlLabel}>Size</Text>
-            <Text style={styles.controlValue}>{size.toFixed(0)} px</Text>
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Navigation Switcher */}
+        <View style={styles.navRow}>
+          <Link href="/index-v2" style={styles.navTab}>
+            <Text style={styles.navTextInactive}>← V2</Text>
+          </Link>
+          <View style={[styles.navTab, styles.navTabActive]}>
+            <Text style={styles.navTextActive}>V3 Showcase</Text>
           </View>
-          <Slider
-            style={styles.slider}
-            minimumValue={48}
-            maximumValue={240}
-            step={4}
-            value={size}
-            onValueChange={setSize}
-            minimumTrackTintColor="#FFFFFF"
-            maximumTrackTintColor="#3A3A3C"
-            thumbTintColor="#FFFFFF"
+          <Link href="/v3" style={styles.navTab}>
+            <Text style={styles.navTextInactive}>Isolated ↗</Text>
+          </Link>
+        </View>
+
+        {/* Loader Preview — just the animation, no text, no pill */}
+        <View style={styles.loaderContainer}>
+          <LoaderV3
+            size={size}
+            speed={speed}
+            reverse={reverse}
+            dotRadius={dotRadius}
+            outerRingDots={outerRingDots}
+            rings={rings}
+            opacity={opacity}
+            falloff={falloff}
+            baseOpacity={baseOpacity}
           />
         </View>
 
-        <View style={styles.control}>
-          <View style={styles.controlHeader}>
-            <Text style={styles.controlLabel}>Speed</Text>
-            <Text style={styles.controlValue}>{speed.toFixed(2)}×</Text>
+        {/* Controls */}
+        <View style={styles.controls}>
+          <View style={styles.headerRow}>
+            <Text style={styles.headerText}>
+              Particle Wave Controls
+            </Text>
+            <Text style={styles.modeText}>
+              {reverse ? 'Reverse' : 'Forward'} — {(2 / speed).toFixed(1)}s loop
+            </Text>
           </View>
-          <Slider
-            style={styles.slider}
-            minimumValue={0}
-            maximumValue={3}
-            step={0.05}
-            value={speed}
-            onValueChange={setSpeed}
-            minimumTrackTintColor="#FFFFFF"
-            maximumTrackTintColor="#3A3A3C"
-            thumbTintColor="#FFFFFF"
-          />
-        </View>
-      </View>
 
-      <Text style={styles.footnote}>
-        3 rings · 270° arc · cosine opacity wave · linear rotation
-      </Text>
+          {/* 1. Rotation Reverse Toggle Button */}
+          <View style={styles.control}>
+            <View style={styles.toggleRow}>
+              <View>
+                <Text style={styles.label}>Wave Direction</Text>
+                <Text style={styles.subLabel}>
+                  {reverse ? 'Counter-clockwise (Reversed)' : 'Clockwise (Default)'}
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={() => setReverse((prev) => !prev)}
+                style={[styles.toggleBtn, reverse && styles.toggleBtnActive]}
+              >
+                <Text style={[styles.toggleBtnText, reverse && styles.toggleBtnTextActive]}>
+                  {reverse ? '↺ Reverse' : '↻ Forward'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* 2. Size */}
+          <View style={styles.control}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Loader Size (Diameter)</Text>
+              <Text style={styles.value}>{Math.round(size)}px</Text>
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={60}
+              maximumValue={280}
+              step={4}
+              value={size}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#27272A"
+              thumbTintColor="#FFFFFF"
+              onValueChange={setSize}
+            />
+          </View>
+
+          {/* 3. Dot Size Slider */}
+          <View style={styles.control}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Dot Size (Radius)</Text>
+              <Text style={styles.value}>{dotRadius.toFixed(1)}px</Text>
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={1}
+              maximumValue={6}
+              step={0.2}
+              value={dotRadius}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#27272A"
+              thumbTintColor="#FFFFFF"
+              onValueChange={setDotRadius}
+            />
+          </View>
+
+          {/* 4. Number of Dots (Outer Ring) */}
+          <View style={styles.control}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Dots Per Ring (Outer)</Text>
+              <Text style={styles.value}>{outerRingDots} dots</Text>
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={8}
+              maximumValue={40}
+              step={1}
+              value={outerRingDots}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#27272A"
+              thumbTintColor="#FFFFFF"
+              onValueChange={setOuterRingDots}
+            />
+          </View>
+
+          {/* 5. Number of Rings */}
+          <View style={styles.control}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Number of Rings</Text>
+              <Text style={styles.value}>{rings} rings</Text>
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={1}
+              maximumValue={8}
+              step={1}
+              value={rings}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#27272A"
+              thumbTintColor="#FFFFFF"
+              onValueChange={setRings}
+            />
+          </View>
+
+          {/* 6. Speed */}
+          <View style={styles.control}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Wave Speed</Text>
+              <Text style={styles.value}>
+                {speed.toFixed(2)}x ({(2 / speed).toFixed(1)}s/loop)
+              </Text>
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={0.2}
+              maximumValue={3}
+              step={0.05}
+              value={speed}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#27272A"
+              thumbTintColor="#FFFFFF"
+              onValueChange={setSpeed}
+            />
+          </View>
+
+          {/* 7. Dot Opacity */}
+          <View style={styles.control}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Dot Brightness / Opacity</Text>
+              <Text style={styles.value}>{Math.round(opacity * 100)}%</Text>
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={0.2}
+              maximumValue={1}
+              step={0.05}
+              value={opacity}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#27272A"
+              thumbTintColor="#FFFFFF"
+              onValueChange={setOpacity}
+            />
+          </View>
+
+          {/* 8. Wave Sharpness (Falloff) */}
+          <View style={styles.control}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Wave Sharpness (Falloff)</Text>
+              <Text style={styles.value}>{falloff.toFixed(1)}</Text>
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={0.5}
+              maximumValue={6}
+              step={0.25}
+              value={falloff}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#27272A"
+              thumbTintColor="#FFFFFF"
+              onValueChange={setFalloff}
+            />
+          </View>
+
+          {/* 9. Base Opacity (Dim Grid Behind Wave) */}
+          <View style={styles.control}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Background Dot Visibility</Text>
+              <Text style={styles.value}>{Math.round(baseOpacity * 100)}%</Text>
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={0.5}
+              step={0.02}
+              value={baseOpacity}
+              minimumTrackTintColor="#FFFFFF"
+              maximumTrackTintColor="#27272A"
+              thumbTintColor="#FFFFFF"
+              onValueChange={setBaseOpacity}
+            />
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  container: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#050505',
+  },
+
+  content: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 64,
+    paddingHorizontal: 16,
+    paddingTop: 32,
+    paddingBottom: 40,
   },
-  header: {
+
+  navRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: '#18181B',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    gap: 6,
   },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 0.4,
+
+  navTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
   },
-  subtitle: {
-    color: '#9E9E9E',
-    fontSize: 13,
-    marginTop: 4,
-    letterSpacing: 0.3,
+
+  navTabActive: {
+    backgroundColor: '#18181B',
   },
-  stage: {
-    flex: 1,
+
+  navTextActive: {
+    color: '#FAFAFA',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  navTextInactive: {
+    color: '#A1A1AA',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  loaderContainer: {
     width: '100%',
+    minHeight: 320,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1C1C1E',
-    borderRadius: 999,
-    paddingVertical: 18,
-    paddingHorizontal: 28,
-    gap: 18,
-  },
-  listeningText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: 0.3,
-  },
+
   controls: {
     width: '100%',
-    maxWidth: 360,
-    gap: 22,
+    maxWidth: 420,
+    backgroundColor: '#09090B',
+    borderWidth: 1,
+    borderColor: '#18181B',
+    borderRadius: 16,
+    padding: 16,
   },
-  control: {
-    gap: 8,
-  },
-  controlHeader: {
+
+  headerRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    paddingBottom: 10,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#18181B',
   },
-  controlLabel: {
-    color: '#CCCCCC',
-    fontSize: 13,
+
+  headerText: {
+    color: '#D4D4D8',
+    fontSize: 12,
     fontWeight: '600',
   },
-  controlValue: {
-    color: '#9E9E9E',
-    fontSize: 13,
-    fontVariant: ['tabular-nums'],
+
+  modeText: {
+    color: '#71717A',
+    fontSize: 11,
+    fontWeight: '400',
   },
+
+  control: {
+    marginTop: 14,
+  },
+
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  label: {
+    color: '#E4E4E7',
+    fontSize: 12,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+
+  value: {
+    color: '#A1A1AA',
+    fontSize: 11,
+    fontFamily: 'monospace',
+    marginLeft: 10,
+  },
+
   slider: {
     width: '100%',
-    height: 36,
+    height: 30,
   },
-  footnote: {
-    color: '#5A5A5C',
-    fontSize: 11,
-    textAlign: 'center',
-    letterSpacing: 0.3,
+
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#121215',
+    borderWidth: 1,
+    borderColor: '#27272A',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+
+  subLabel: {
+    color: '#71717A',
+    fontSize: 10,
+    marginTop: 2,
+  },
+
+  toggleBtn: {
+    backgroundColor: '#27272A',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3F3F46',
+  },
+
+  toggleBtnActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+
+  toggleBtnText: {
+    color: '#D4D4D8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  toggleBtnTextActive: {
+    color: '#09090B',
+    fontWeight: '700',
   },
 });

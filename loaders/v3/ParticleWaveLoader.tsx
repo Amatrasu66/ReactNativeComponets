@@ -1,10 +1,9 @@
 /**
  * ParticleWaveLoader (Loader V3)
  * ----------------------------------------------------------------------------
- * A polar-grid dot-matrix loader inspired by the screen recording supplied
- * by the user. Three concentric rings of small dots form a C-shape (≈270°
- * arc). A brightness wave with a sharp leading head and a long gradual tail
- * sweeps clockwise through the grid at a constant angular velocity.
+ * A polar-grid dot-matrix loader. Concentric rings of small dots form a
+ * circle. A brightness wave with a sharp leading head and a long gradual tail
+ * sweeps through the grid at a constant angular velocity.
  *
  * Rendering tech:
  *   - react-native-svg <Circle> for each dot (crisp vector circles)
@@ -26,7 +25,6 @@ import Animated, {
   useAnimatedProps,
   useDerivedValue,
   useSharedValue,
-  withRepeat,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -36,31 +34,29 @@ import Animated, {
 /* -------------------------------------------------------------------------- */
 
 export type ParticleWaveLoaderProps = {
-  /** Overall loader diameter in pixels. Default 96. */
+  /** Overall loader diameter in pixels. Default 120. */
   size?: number;
   /**
    * Speed multiplier. 1.0 ≈ 2.0 s per full rotation.
    * Values ≤ 0 freeze the animation. Default 1.
    */
   speed?: number;
+  /** Reverse the wave direction. Default false (clockwise). */
+  reverse?: boolean;
   /** Radius of each dot in pixels. Default 2.4. */
   dotRadius?: number;
   /** Number of concentric rings. Default 3. */
   rings?: number;
   /** Dot count on the OUTER ring. Inner rings scale with circumference. Default 22. */
   outerRingDots?: number;
-  /** Angular extent of the dot grid in radians. π * 1.5 = 270° C-shape. Default 1.5π. */
-  arcSpan?: number;
-  /** Direction the C-shape opens toward, in radians. 0 = right. Default 0. */
-  gapAngle?: number;
+  /** Dot opacity multiplier (0.2 – 1.0). Default 1. */
+  opacity?: number;
   /** Wave falloff exponent. 1 = soft symmetric cosine, 3 = sharper head. Default 2. */
   falloff?: number;
-  /** Wave travel direction. +1 = clockwise, -1 = counter-clockwise. Default +1. */
-  direction?: 1 | -1;
-  /** Dot color (any valid SVG color string). Default '#FFFFFF'. */
-  color?: string;
   /** Minimum dot opacity (creates the dim-grid look behind the wave). Default 0.08. */
   baseOpacity?: number;
+  /** Dot color (any valid SVG color string). Default '#FFFFFF'. */
+  color?: string;
   /** Optional container style. */
   style?: StyleProp<ViewStyle>;
 };
@@ -70,15 +66,14 @@ export type ParticleWaveLoaderProps = {
 /* -------------------------------------------------------------------------- */
 
 const DEFAULTS = {
-  size: 96,
+  size: 120,
   speed: 1,
+  reverse: false,
   dotRadius: 2.4,
   rings: 3,
   outerRingDots: 22,
-  arcSpan: Math.PI * 1.5, // 270° C-shape
-  gapAngle: 0, // gap opens to the right (toward companion text)
+  opacity: 1,
   falloff: 2,
-  direction: 1 as const,
   color: '#FFFFFF',
   baseOpacity: 0.08,
 };
@@ -102,18 +97,15 @@ export type Dot = {
 /**
  * Build the dot grid: `rings` concentric layers of evenly-spaced dots,
  * staggered by half a step on every other ring so dots don't form visible
- * radial spokes. Dots only exist within the arc span (the C-shape gap is
- * empty).
+ * radial spokes. Dots fill the full 360° circle.
  */
 function generateDots(opts: {
   size: number;
   rings: number;
   outerRingDots: number;
   dotRadius: number;
-  arcSpan: number;
-  gapAngle: number;
 }): Dot[] {
-  const { size, rings, outerRingDots, dotRadius, arcSpan, gapAngle } = opts;
+  const { size, rings, outerRingDots, dotRadius } = opts;
 
   // Reserve a little margin so the outer dots don't clip at the box edge.
   const outerRadius = size / 2 - dotRadius - 1;
@@ -121,10 +113,6 @@ function generateDots(opts: {
   // middle so the silhouette reads as a ring cluster, not a solid disk.
   const innerRadius = outerRadius * 0.32;
   const center = size / 2;
-
-  // The gap is centered on `gapAngle`. Dots live on the opposite arc.
-  const gapHalf = (TWO_PI - arcSpan) / 2;
-  const startAngle = gapAngle + gapHalf;
 
   const dots: Dot[] = [];
 
@@ -137,10 +125,10 @@ function generateDots(opts: {
     const ringDots = Math.max(6, Math.round(outerRingDots * (radius / outerRadius)));
 
     // Stagger every other ring by half a step (polar offset, not cartesian).
-    const offset = (ring % 2) * (arcSpan / ringDots / 2);
+    const offset = (ring % 2) * (TWO_PI / ringDots / 2);
 
     for (let i = 0; i < ringDots; i++) {
-      const a = startAngle + offset + (i * arcSpan) / ringDots;
+      const a = offset + (i * TWO_PI) / ringDots;
       dots.push({
         cx: center + radius * Math.cos(a),
         cy: center + radius * Math.sin(a),
@@ -166,9 +154,10 @@ type AnimatedDotProps = {
   fill: string;
   angle: number;
   phase: SharedValue<number>;
-  direction: 1 | -1;
+  reverse: boolean;
   falloff: number;
   baseOpacity: number;
+  maxOpacity: number;
 };
 
 /**
@@ -186,24 +175,26 @@ const AnimatedDot = React.memo<AnimatedDotProps>(function AnimatedDot({
   fill,
   angle,
   phase,
-  direction,
+  reverse,
   falloff,
   baseOpacity,
+  maxOpacity,
 }: AnimatedDotProps) {
   const opacity = useDerivedValue(() => {
     'worklet';
 
+    const dir = reverse ? -1 : 1;
     // Signed angular difference between this dot and the current phase.
-    let diff = angle - phase.value * direction;
+    let diff = angle - phase.value * dir;
     // Normalize to [-π, π].
     diff = ((diff % TWO_PI) + TWO_PI) % TWO_PI;
     if (diff > Math.PI) diff -= TWO_PI;
 
     // Symmetric cosine falloff. cos(0)=1 (brightest), cos(±π/2)=0 (invisible).
     const c = Math.cos(diff);
-    if (c <= 0) return baseOpacity;
+    if (c <= 0) return baseOpacity * maxOpacity;
     const wave = Math.pow(c, falloff);
-    return baseOpacity + (1 - baseOpacity) * wave;
+    return (baseOpacity + (1 - baseOpacity) * wave) * maxOpacity;
   });
 
   const animatedProps = useAnimatedProps(
@@ -229,43 +220,37 @@ export const ParticleWaveLoader: React.FC<ParticleWaveLoaderProps> = (props) => 
   const {
     size,
     speed,
+    reverse,
     dotRadius,
     rings,
     outerRingDots,
-    arcSpan,
-    gapAngle,
+    opacity,
     falloff,
-    direction,
     color,
     baseOpacity,
     style,
   } = { ...DEFAULTS, ...props };
 
-  // Single source of truth for the wave head. 0 → 2π = one full revolution.
+  // Continuous angle accumulation for seamless, smooth rotation.
   const phase = useSharedValue(0);
 
   useEffect(() => {
     if (!Number.isFinite(speed) || speed <= 0) {
-      // Invalid speed: stop cleanly and park at phase 0 so the grid is at
-      // rest instead of frozen mid-flight.
       cancelAnimation(phase);
       phase.value = 0;
       return;
     }
 
-    const cycleDuration = BASE_CYCLE_MS / speed;
-    cancelAnimation(phase);
-    phase.value = 0;
-    // Linear timing → constant angular velocity (matches the reference video).
-    // Infinite repeat, no reverse, no easing variation across cycles.
-    phase.value = withRepeat(
-      withTiming(TWO_PI, {
-        duration: cycleDuration,
-        easing: Easing.linear,
-      }),
-      -1,
-      false,
-    );
+    // Angular velocity: TWO_PI radians per cycle, cycle = BASE_CYCLE_MS / speed
+    const angularSpeed = (TWO_PI * speed) / BASE_CYCLE_MS;
+    // Animate continuously forward for a very long duration preserving current angle
+    const duration = 1000000;
+    const targetDelta = angularSpeed * duration;
+
+    phase.value = withTiming(phase.value + targetDelta, {
+      duration,
+      easing: Easing.linear,
+    });
 
     return () => {
       cancelAnimation(phase);
@@ -280,10 +265,8 @@ export const ParticleWaveLoader: React.FC<ParticleWaveLoaderProps> = (props) => 
         rings,
         outerRingDots,
         dotRadius,
-        arcSpan,
-        gapAngle,
       }),
-    [size, rings, outerRingDots, dotRadius, arcSpan, gapAngle],
+    [size, rings, outerRingDots, dotRadius],
   );
 
   return (
@@ -294,16 +277,17 @@ export const ParticleWaveLoader: React.FC<ParticleWaveLoaderProps> = (props) => 
       <Svg width={size} height={size}>
         {dots.map((d, i) => (
           <AnimatedDot
-            key={i}
+            key={`${i}-${rings}-${outerRingDots}`}
             cx={d.cx}
             cy={d.cy}
             r={d.r}
             fill={color}
             angle={d.angle}
             phase={phase}
-            direction={direction}
+            reverse={reverse}
             falloff={falloff}
             baseOpacity={baseOpacity}
+            maxOpacity={opacity}
           />
         ))}
       </Svg>

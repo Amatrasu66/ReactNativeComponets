@@ -14,7 +14,7 @@ import { LoaderV3 } from '../../loaders/v3';
 export default function V3PreviewScreen() {
   return (
     <View style={styles.screen}>
-      <LoaderV3 size={120} speed={1} />
+      <LoaderV3 size={180} speed={1} />
     </View>
   );
 }
@@ -22,7 +22,7 @@ export default function V3PreviewScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#050505',
     alignItems: 'center',
     justifyContent: 'center',
   },
